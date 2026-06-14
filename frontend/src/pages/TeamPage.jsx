@@ -1,105 +1,28 @@
-// frontend/src/pages/KanbanPage.jsx
+// frontend/src/pages/TeamPage.jsx
 import { useState, useEffect } from 'react'
-import { DragDropContext, Droppable } from '@hello-pangea/dnd'
 import Layout from '../components/Layout'
-import TaskCard from '../components/TaskCard'
 import {
-    getTasks, updateTaskStatus,
-    deleteTask, createTask, getProjects
+    getTeams, createTeam,
+    deleteTeam, addMember
 } from '../services/api'
 
-const columns = [
-    {
-        id: 'todo',
-        title: '📋 À Faire',
-        color: '#6b7280',
-        bg: '#f9fafb'
-    },
-    {
-        id: 'inprogress',
-        title: '🔄 En Cours',
-        color: '#3b82f6',
-        bg: '#eff6ff'
-    },
-    {
-        id: 'done',
-        title: '✅ Terminé',
-        color: '#10b981',
-        bg: '#f0fdf4'
-    }
-]
-
-const KanbanPage = () => {
-    const [tasks, setTasks] = useState([])
-    const [projects, setProjects] = useState([])
+const TeamPage = () => {
+    const [teams, setTeams] = useState([])
     const [showForm, setShowForm] = useState(false)
-    const [form, setForm] = useState({
-        title: '', description: '',
-        priority: 'medium', project: '',
-        deadline: '', status: 'todo'
-    })
+    const [showAddMember, setShowAddMember] = useState(null)
+    const [form, setForm] = useState({ name: '', description: '' })
+    const [memberForm, setMemberForm] = useState({ userId: '' })
 
     useEffect(() => {
-        fetchTasks()
-        fetchProjects()
+        fetchTeams()
     }, [])
 
-    const fetchTasks = async () => {
+    const fetchTeams = async () => {
         try {
-            const res = await getTasks()
-            setTasks(res.data)
+            const res = await getTeams()
+            setTeams(res.data)
         } catch (err) {
             console.log(err)
-        }
-    }
-
-    const fetchProjects = async () => {
-        try {
-            const res = await getProjects()
-            setProjects(res.data)
-        } catch (err) {
-            console.log(err)
-        }
-    }
-
-    // Drag & Drop handler
-    const onDragEnd = async (result) => {
-        const { destination, source, draggableId } = result
-
-        // Pas de destination = annulé
-        if (!destination) return
-
-        // Même colonne même position = rien
-        if (
-            destination.droppableId === source.droppableId &&
-            destination.index === source.index
-        ) return
-
-        // Nouveau statut = l'id de la colonne destination
-        const newStatus = destination.droppableId
-
-        // Mise à jour optimiste (UI immédiate)
-        setTasks(prev =>
-            prev.map(task =>
-                task._id === draggableId
-                    ? { ...task, status: newStatus }
-                    : task
-            )
-        )
-
-        // Mise à jour en BDD
-        try {
-            await updateTaskStatus(draggableId, newStatus)
-        } catch (err) {
-            console.log(err)
-            fetchTasks() // Recharge si erreur
-        }
-    }
-
-    const handleDelete = async (id) => {
-        if (window.confirm('Supprimer cette tâche ?')) {
-            await deleteTask(id)
-            fetchTasks()
         }
     }
 
@@ -110,173 +33,175 @@ const KanbanPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
-            await createTask(form)
+            await createTeam(form)
             setShowForm(false)
-            setForm({
-                title: '', description: '',
-                priority: 'medium', project: '',
-                deadline: '', status: 'todo'
-            })
-            fetchTasks()
+            setForm({ name: '', description: '' })
+            fetchTeams()
         } catch (err) {
             console.log(err)
         }
     }
 
-    // Filtre les tâches par colonne
-    const getTasksByStatus = (status) =>
-        tasks.filter(task => task.status === status)
+    const handleDelete = async (id) => {
+        if (window.confirm('Supprimer cette équipe ?')) {
+            await deleteTeam(id)
+            fetchTeams()
+        }
+    }
+
+    const handleAddMember = async (e, teamId) => {
+        e.preventDefault()
+        try {
+            await addMember(teamId, memberForm)
+            setShowAddMember(null)
+            setMemberForm({ userId: '' })
+            fetchTeams()
+        } catch (err) {
+            console.log(err)
+        }
+    }
 
     return (
         <Layout>
             {/* Header */}
             <div style={styles.header}>
-                <div>
-                    <h2 style={styles.title}>📊 Kanban Board</h2>
-                    <p style={styles.subtitle}>
-                        Glisse les cartes pour changer leur statut
-                    </p>
-                </div>
+                <h2 style={styles.title}>👥 Mes Équipes</h2>
                 <button
                     style={styles.addBtn}
                     onClick={() => setShowForm(!showForm)}
                 >
-                    {showForm ? '✕ Annuler' : '+ Nouvelle Tâche'}
+                    {showForm ? '✕ Annuler' : '+ Nouvelle Équipe'}
                 </button>
             </div>
 
-            {/* Formulaire */}
+            {/* Formulaire création équipe */}
             {showForm && (
                 <div style={styles.formCard}>
-                    <h3 style={styles.formTitle}>Créer une tâche</h3>
+                    <h3 style={styles.formTitle}>Créer une équipe</h3>
                     <form onSubmit={handleSubmit}>
                         <input
                             style={styles.input}
                             type="text"
-                            name="title"
-                            placeholder="Titre de la tâche"
-                            value={form.title}
+                            name="name"
+                            placeholder="Nom de l'équipe"
+                            value={form.name}
                             onChange={handleChange}
                             required
                         />
                         <textarea
                             style={styles.textarea}
                             name="description"
-                            placeholder="Description (optionnel)"
+                            placeholder="Description de l'équipe"
                             value={form.description}
                             onChange={handleChange}
-                            rows={2}
+                            rows={3}
                         />
-                        <div style={styles.row}>
-                            <select
-                                style={styles.inputHalf}
-                                name="priority"
-                                value={form.priority}
-                                onChange={handleChange}
-                            >
-                                <option value="low">🟢 Faible</option>
-                                <option value="medium">🟡 Moyenne</option>
-                                <option value="high">🔴 Haute</option>
-                            </select>
-                            <select
-                                style={styles.inputHalf}
-                                name="status"
-                                value={form.status}
-                                onChange={handleChange}
-                            >
-                                <option value="todo">📋 À Faire</option>
-                                <option value="inprogress">🔄 En Cours</option>
-                                <option value="done">✅ Terminé</option>
-                            </select>
-                        </div>
-                        <div style={styles.row}>
-                            <select
-                                style={styles.inputHalf}
-                                name="project"
-                                value={form.project}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">Sélectionner un projet</option>
-                                {projects.map(p => (
-                                    <option key={p._id} value={p._id}>
-                                        {p.title}
-                                    </option>
-                                ))}
-                            </select>
-                            <input
-                                style={styles.inputHalf}
-                                type="date"
-                                name="deadline"
-                                value={form.deadline}
-                                onChange={handleChange}
-                            />
-                        </div>
                         <button style={styles.submitBtn} type="submit">
-                            ✅ Créer
+                            ✅ Créer l'équipe
                         </button>
                     </form>
                 </div>
             )}
 
-            {/* Kanban Board */}
-            <DragDropContext onDragEnd={onDragEnd}>
-                <div style={styles.board}>
-                    {columns.map((column) => {
-                        const columnTasks = getTasksByStatus(column.id)
-                        return (
-                            <div key={column.id} style={styles.column}>
-                                {/* Header colonne */}
-                                <div style={{
-                                    ...styles.columnHeader,
-                                    borderBottom: `3px solid ${column.color}`
-                                }}>
-                                    <span style={styles.columnTitle}>{column.title}</span>
-                                    <span style={{
-                                        ...styles.columnCount,
-                                        backgroundColor: column.color + '20',
-                                        color: column.color
-                                    }}>
-                                        {columnTasks.length}
+            {/* Liste des équipes */}
+            {teams.length === 0 ? (
+                <div style={styles.empty}>
+                    <p>📭 Aucune équipe pour le moment</p>
+                    <p style={styles.emptyHint}>Crée ta première équipe !</p>
+                </div>
+            ) : (
+                <div style={styles.grid}>
+                    {teams.map((team) => (
+                        <div key={team._id} style={styles.card}>
+
+                            {/* Header carte */}
+                            <div style={styles.cardHeader}>
+                                <div style={styles.teamIcon}>👥</div>
+                                <div style={styles.cardHeaderRight}>
+                                    <h3 style={styles.cardTitle}>{team.name}</h3>
+                                    <span style={styles.memberCount}>
+                                        {team.members?.length || 0} membre(s)
                                     </span>
                                 </div>
-
-                                {/* Zone droppable */}
-                                <Droppable droppableId={column.id}>
-                                    {(provided, snapshot) => (
-                                        <div
-                                            ref={provided.innerRef}
-                                            {...provided.droppableProps}
-                                            style={{
-                                                ...styles.droppable,
-                                                backgroundColor: snapshot.isDraggingOver
-                                                    ? column.color + '15'
-                                                    : column.bg,
-                                                minHeight: snapshot.isDraggingOver ? '200px' : '150px'
-                                            }}
-                                        >
-                                            {columnTasks.length === 0 && (
-                                                <div style={styles.emptyCol}>
-                                                    Glisse une tâche ici
-                                                </div>
-                                            )}
-                                            {columnTasks.map((task, index) => (
-                                                <TaskCard
-                                                    key={task._id}
-                                                    task={task}
-                                                    index={index}
-                                                    onDelete={handleDelete}
-                                                />
-                                            ))}
-                                            {provided.placeholder}
-                                        </div>
-                                    )}
-                                </Droppable>
+                                <button
+                                    style={styles.deleteBtn}
+                                    onClick={() => handleDelete(team._id)}
+                                >
+                                    🗑️
+                                </button>
                             </div>
-                        )
-                    })}
+
+                            {/* Description */}
+                            <p style={styles.cardDesc}>
+                                {team.description || 'Aucune description'}
+                            </p>
+
+                            {/* Liste membres */}
+                            <div style={styles.membersSection}>
+                                <h4 style={styles.membersTitle}>Membres :</h4>
+                                <div style={styles.membersList}>
+                                    {team.members?.map((member) => (
+                                        <div key={member._id} style={styles.memberItem}>
+                                            <div style={styles.memberAvatar}>
+                                                {member.name?.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p style={styles.memberName}>{member.name}</p>
+                                                <p style={styles.memberEmail}>{member.email}</p>
+                                            </div>
+                                            <span style={{
+                                                ...styles.roleBadge,
+                                                backgroundColor: member.role === 'admin'
+                                                    ? '#eef2ff' : '#f0fdf4',
+                                                color: member.role === 'admin'
+                                                    ? '#4f46e5' : '#059669'
+                                            }}>
+                                                {member.role === 'admin' ? '👑 Admin' : '👤 Member'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Ajouter un membre */}
+                            <button
+                                style={styles.addMemberBtn}
+                                onClick={() => setShowAddMember(
+                                    showAddMember === team._id ? null : team._id
+                                )}
+                            >
+                                {showAddMember === team._id
+                                    ? '✕ Annuler'
+                                    : '+ Ajouter un membre'}
+                            </button>
+
+                            {showAddMember === team._id && (
+                                <form
+                                    onSubmit={(e) => handleAddMember(e, team._id)}
+                                    style={styles.addMemberForm}
+                                >
+                                    <input
+                                        style={styles.input}
+                                        type="text"
+                                        placeholder="ID de l'utilisateur"
+                                        value={memberForm.userId}
+                                        onChange={(e) => setMemberForm({ userId: e.target.value })}
+                                        required
+                                    />
+                                    <button style={styles.submitBtn} type="submit">
+                                        ✅ Ajouter
+                                    </button>
+                                </form>
+                            )}
+
+                            {/* Créateur */}
+                            <div style={styles.createdBy}>
+                                Créé par : {team.createdBy?.name || 'Inconnu'}
+                            </div>
+                        </div>
+                    ))}
                 </div>
-            </DragDropContext>
+            )}
         </Layout>
     )
 }
@@ -284,10 +209,9 @@ const KanbanPage = () => {
 const styles = {
     header: {
         display: 'flex', justifyContent: 'space-between',
-        alignItems: 'flex-start', marginBottom: '25px'
+        alignItems: 'center', marginBottom: '25px'
     },
-    title: { fontSize: '24px', color: '#1e1b4b', margin: '0 0 5px' },
-    subtitle: { color: '#6b7280', fontSize: '13px', margin: 0 },
+    title: { fontSize: '24px', color: '#1e1b4b', margin: 0 },
     addBtn: {
         padding: '10px 20px', backgroundColor: '#4f46e5',
         color: 'white', border: 'none', borderRadius: '8px',
@@ -298,63 +222,101 @@ const styles = {
         borderRadius: '12px', marginBottom: '25px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
     },
-    formTitle: { color: '#1e1b4b', marginBottom: '15px', margin: '0 0 15px' },
+    formTitle: { color: '#1e1b4b', margin: '0 0 15px' },
     input: {
-        width: '100%', padding: '10px 12px', marginBottom: '12px',
+        width: '100%', padding: '12px', marginBottom: '12px',
         border: '1px solid #ddd', borderRadius: '8px',
         fontSize: '14px', boxSizing: 'border-box'
     },
     textarea: {
-        width: '100%', padding: '10px 12px', marginBottom: '12px',
+        width: '100%', padding: '12px', marginBottom: '12px',
         border: '1px solid #ddd', borderRadius: '8px',
         fontSize: '14px', boxSizing: 'border-box', resize: 'vertical'
-    },
-    row: { display: 'flex', gap: '12px' },
-    inputHalf: {
-        flex: 1, padding: '10px 12px', marginBottom: '12px',
-        border: '1px solid #ddd', borderRadius: '8px',
-        fontSize: '14px', boxSizing: 'border-box'
     },
     submitBtn: {
         padding: '10px 25px', backgroundColor: '#059669',
         color: 'white', border: 'none', borderRadius: '8px',
         cursor: 'pointer', fontWeight: 'bold'
     },
-    board: {
+    grid: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: '20px',
-        alignItems: 'start'
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '20px'
     },
-    column: {
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.06)'
+    card: {
+        backgroundColor: 'white', borderRadius: '12px',
+        padding: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+        borderTop: '4px solid #4f46e5'
     },
-    columnHeader: {
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', padding: '15px 16px',
-        backgroundColor: 'white'
-    },
-    columnTitle: {
-        fontWeight: '600', fontSize: '14px', color: '#1e1b4b'
-    },
-    columnCount: {
-        width: '24px', height: '24px', borderRadius: '50%',
+    cardHeader: {
         display: 'flex', alignItems: 'center',
-        justifyContent: 'center', fontSize: '12px', fontWeight: 'bold'
+        gap: '12px', marginBottom: '12px'
     },
-    droppable: {
-        padding: '12px',
-        minHeight: '150px',
-        transition: 'background-color 0.2s, min-height 0.2s'
+    teamIcon: {
+        fontSize: '32px', backgroundColor: '#eef2ff',
+        borderRadius: '50%', width: '50px', height: '50px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center'
     },
-    emptyCol: {
-        textAlign: 'center', padding: '30px 10px',
-        color: '#9ca3af', fontSize: '13px',
-        border: '2px dashed #e5e7eb',
-        borderRadius: '8px'
-    }
+    cardHeaderRight: { flex: 1 },
+    cardTitle: { fontSize: '16px', color: '#1e1b4b', margin: '0 0 2px' },
+    memberCount: {
+        fontSize: '12px', color: '#6b7280'
+    },
+    deleteBtn: {
+        background: 'none', border: 'none',
+        cursor: 'pointer', fontSize: '18px'
+    },
+    cardDesc: {
+        fontSize: '13px', color: '#6b7280',
+        marginBottom: '15px', lineHeight: '1.5'
+    },
+    membersSection: { marginBottom: '15px' },
+    membersTitle: {
+        fontSize: '13px', color: '#374151',
+        margin: '0 0 10px', fontWeight: '600'
+    },
+    membersList: { display: 'flex', flexDirection: 'column', gap: '8px' },
+    memberItem: {
+        display: 'flex', alignItems: 'center',
+        gap: '10px', padding: '8px',
+        backgroundColor: '#f9fafb', borderRadius: '8px'
+    },
+    memberAvatar: {
+        width: '34px', height: '34px', borderRadius: '50%',
+        backgroundColor: '#4f46e5', color: 'white',
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'center', fontWeight: 'bold',
+        fontSize: '14px', flexShrink: 0
+    },
+    memberName: {
+        fontSize: '13px', fontWeight: '600',
+        color: '#1e1b4b', margin: 0
+    },
+    memberEmail: {
+        fontSize: '11px', color: '#6b7280', margin: 0
+    },
+    roleBadge: {
+        fontSize: '11px', padding: '3px 8px',
+        borderRadius: '10px', marginLeft: 'auto',
+        fontWeight: '500', flexShrink: 0
+    },
+    addMemberBtn: {
+        width: '100%', padding: '8px',
+        backgroundColor: '#eef2ff', color: '#4f46e5',
+        border: '1px solid #c7d2fe', borderRadius: '8px',
+        cursor: 'pointer', fontSize: '13px',
+        fontWeight: '500', marginBottom: '10px'
+    },
+    addMemberForm: { marginTop: '10px' },
+    createdBy: {
+        fontSize: '11px', color: '#9ca3af',
+        marginTop: '10px', textAlign: 'right'
+    },
+    empty: {
+        textAlign: 'center', padding: '60px',
+        color: '#6b7280', fontSize: '18px'
+    },
+    emptyHint: { fontSize: '14px', color: '#9ca3af' }
 }
 
-export default KanbanPage
+export default TeamPage

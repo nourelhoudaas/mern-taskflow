@@ -10,7 +10,7 @@ const createProject = async (req, res) => {
             title,
             description,
             team,
-            members,
+            members: [req.user.id, ...(members || [])],
             createdBy: req.user.id
         })
 
@@ -24,7 +24,10 @@ const createProject = async (req, res) => {
 const getProjects = async (req, res) => {
     try {
         const projects = await Project.find({
-            members: req.user.id
+            $or: [
+                { members: req.user.id },
+                { createdBy: req.user.id }  // ✅ affiche aussi les projets créés par l'user
+            ]
         })
             .populate('team', 'name')
             .populate('members', 'name email')

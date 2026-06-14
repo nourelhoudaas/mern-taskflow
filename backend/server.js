@@ -23,6 +23,7 @@ app.use('/api/teams', require('./routes/teams'))
 app.use('/api/projects', require('./routes/projects'))
 app.use('/api/tasks', require('./routes/tasks'))
 app.use('/api/notifications', require('./routes/notifications'))
+app.use('/api/users', require('./routes/users'))
 
 // Test route
 app.get('/', (req, res) => {

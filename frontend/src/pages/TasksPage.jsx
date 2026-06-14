@@ -3,12 +3,13 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import {
     getTasks, createTask, deleteTask,
-    updateTaskStatus, getProjects
+    updateTaskStatus, getProjects, getUsers
 } from '../services/api'
 
 const TasksPage = () => {
     const [tasks, setTasks] = useState([])
     const [projects, setProjects] = useState([])
+    const [users, setUsers] = useState([])  // ✅ ajout
     const [showForm, setShowForm] = useState(false)
     const [filter, setFilter] = useState('all')
     const [form, setForm] = useState({
@@ -19,6 +20,7 @@ const TasksPage = () => {
     useEffect(() => {
         fetchTasks()
         fetchProjects()
+        fetchUsers()  // ✅ ajout
     }, [])
 
     const fetchTasks = async () => {
@@ -34,6 +36,16 @@ const TasksPage = () => {
         try {
             const res = await getProjects()
             setProjects(res.data)
+        } catch (err) {
+            console.log(err)
+        }
+    }
+
+    // ✅ ajout
+    const fetchUsers = async () => {
+        try {
+            const res = await getUsers()
+            setUsers(res.data)
         } catch (err) {
             console.log(err)
         }
@@ -101,7 +113,6 @@ const TasksPage = () => {
                 </button>
             </div>
 
-            {/* Formulaire création */}
             {showForm && (
                 <div style={styles.formCard}>
                     <h3 style={styles.formTitle}>Créer une tâche</h3>
@@ -147,6 +158,22 @@ const TasksPage = () => {
                                 ))}
                             </select>
                         </div>
+
+                        {/* ✅ Liste déroulante avec noms des users */}
+                        <select
+                            style={styles.input}
+                            name="assignedTo"
+                            value={form.assignedTo}
+                            onChange={handleChange}
+                        >
+                            <option value="">👤 Assigner à (optionnel)</option>
+                            {users.map(user => (
+                                <option key={user._id} value={user._id}>
+                                    {user.name} — {user.role === 'admin' ? '👑 Admin' : '👤 Member'}
+                                </option>
+                            ))}
+                        </select>
+
                         <input
                             style={styles.input}
                             type="date"
@@ -205,6 +232,12 @@ const TasksPage = () => {
                                         {task.project && (
                                             <span style={styles.projectBadge}>
                                                 📁 {task.project?.title}
+                                            </span>
+                                        )}
+                                        {/* ✅ Affiche le nom au lieu de l'ID */}
+                                        {task.assignedTo && (
+                                            <span style={styles.assignedBadge}>
+                                                👤 {task.assignedTo?.name}
                                             </span>
                                         )}
                                         <span style={{
@@ -269,7 +302,7 @@ const styles = {
         border: '1px solid #ddd', borderRadius: '8px',
         fontSize: '14px', boxSizing: 'border-box', resize: 'vertical'
     },
-    row: { display: 'flex', gap: '15px', marginBottom: '0' },
+    row: { display: 'flex', gap: '15px' },
     inputHalf: {
         flex: 1, padding: '12px', marginBottom: '15px',
         border: '1px solid #ddd', borderRadius: '8px',
@@ -280,9 +313,7 @@ const styles = {
         color: 'white', border: 'none', borderRadius: '8px',
         cursor: 'pointer', fontWeight: 'bold'
     },
-    filters: {
-        display: 'flex', gap: '10px', marginBottom: '20px'
-    },
+    filters: { display: 'flex', gap: '10px', marginBottom: '20px' },
     filterBtn: {
         padding: '8px 16px', backgroundColor: 'white',
         border: '1px solid #ddd', borderRadius: '20px',
@@ -314,6 +345,10 @@ const styles = {
     projectBadge: {
         fontSize: '12px', color: '#4f46e5',
         backgroundColor: '#eef2ff', padding: '3px 8px', borderRadius: '10px'
+    },
+    assignedBadge: {
+        fontSize: '12px', color: '#059669',
+        backgroundColor: '#f0fdf4', padding: '3px 8px', borderRadius: '10px'
     },
     priorityBadge: {
         fontSize: '12px', padding: '3px 8px', borderRadius: '10px'

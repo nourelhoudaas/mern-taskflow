@@ -8,7 +8,13 @@ dotenv.config()
 const app = express()
 
 // Middlewares
-app.use(cors())
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://mern-taskflow.vercel.app' // ← ton URL Vercel
+  ],
+  credentials: true
+}))
 app.use(express.json())
 
 // Routes

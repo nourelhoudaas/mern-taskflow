@@ -57,11 +57,6 @@ const ProjectsPage = () => {
         }
     }
 
-    const priorityColor = {
-        'todo': '#6b7280',
-        'inprogress': '#3b82f6',
-        'done': '#10b981'
-    }
 
     return (
         <Layout>

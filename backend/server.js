@@ -11,7 +11,7 @@ const app = express()
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'https://mern-taskflow.vercel.app'
+    'https://mern-taskflow-seven.vercel.app'
   ],
   credentials: true
 }))

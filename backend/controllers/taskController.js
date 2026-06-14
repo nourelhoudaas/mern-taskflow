@@ -5,19 +5,23 @@ const Notification = require('../models/Notification')
 // @route  POST /api/tasks
 const createTask = async (req, res) => {
     try {
-        const { title, description, priority, assignedTo, project, deadline } = req.body
+        const { title, description, priority, assignedTo, project, deadline, status } = req.body
+
+        if (!project) {
+            return res.status(400).json({ message: '❌ Projet obligatoire' })
+        }
 
         const task = await Task.create({
             title,
             description,
-            priority,
-            assignedTo,
+            priority: priority || 'medium',
+            assignedTo: assignedTo || null,  // ✅ si vide → null
             project,
-            deadline,
+            deadline: deadline || null,       // ✅ si vide → null
+            status: status || 'todo',
             createdBy: req.user.id
         })
 
-        // Créer une notification si la tâche est assignée
         if (assignedTo) {
             await Notification.create({
                 userId: assignedTo,
